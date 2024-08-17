@@ -261,7 +261,7 @@ def game():
 					
 		draw(tiles, score)
 		
-		if not check_loss(tiles):
+		if check_loss(tiles):
 			return False
 		if any(tile.number == 2048 for tile in tiles.values()):
 			return True
