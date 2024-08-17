@@ -66,17 +66,21 @@ class Tile:
 		self.x += delta[0]
 		self.y += delta[1]
 
-def draw(tiles):
+def draw(tiles, score):
 	WIN.fill((205, 192, 180))
+	
+	score = pygame.font.Font(None, 120).render(str(score), 1, (119, 110, 101))
 	
 	for tile in tiles.values():
 		tile.draw()
 		
 	draw_grid()
+		
+	WIN.blit(score, (10, 10, WIDTH, 100))
 	
 	pygame.display.update()
 
-def move_tiles(dir, tiles):
+def move_tiles(dir, tiles, score):
 	updated = True
 	blocks = set()
 	
@@ -141,6 +145,7 @@ def move_tiles(dir, tiles):
 					tile.move(delta)
 				else:
 					next.number *= 2
+					score += next.number
 					sorted_tiles.pop(i)
 					blocks.add(next)
 			elif move_check(tile, next):
@@ -151,9 +156,10 @@ def move_tiles(dir, tiles):
 			tile.set_pos(ceiling)
 			updated = True
 		
-		update_tiles(tiles, sorted_tiles)
+		update_tiles(tiles, sorted_tiles, score)
 	
 	end_move(tiles)
+	return score
 
 def end_move(tiles):
 	while True:
@@ -164,13 +170,12 @@ def end_move(tiles):
 	
 	tiles[f"{row}{col}"] = Tile(random.choice([2, 4]), row, col)
 
-def update_tiles(tiles, sorted):
+def update_tiles(tiles, sorted, score):
 	tiles.clear()
 	for tile in sorted:
 		tiles[f"{tile.row}{tile.col}"] = tile
 	
-	draw(tiles)
-	
+	draw(tiles, score)
 		
 def draw_grid():
 	for row in range(1, ROWS):
@@ -182,7 +187,32 @@ def draw_grid():
 		pygame.draw.line(WIN, (187, 173, 160), (x, 0), (x, HEIGHT), 10)
 	
 	pygame.draw.rect(WIN, (187, 173, 160), (0, 0, WIDTH, HEIGHT), 10)	
+
+def check_loss(tiles):
 	
+	if len(tiles) != 16:
+		return False
+	
+	for tile in tiles.values():
+		neighbors = list()
+		up = tiles.get(f"{tile.row-1}{tile.col}")
+		if up:
+			neighbors.append(up)
+		down = tiles.get(f"{tile.row + 1}{tile.col}")
+		if down:
+			neighbors.append(down)
+		left = tiles.get(f"{tile.row}{tile.col - 1}")
+		if left:
+			neighbors.append(left)
+		right = tiles.get(f"{tile.row}{tile.col + 1}")
+		if right:
+			neighbors.append(right)
+			
+			if any(tile.number == neighbor.number for neighbor in neighbors):
+				return False
+	
+	return True
+			
 def game():
 	
 	score = 0
@@ -211,32 +241,54 @@ def game():
 				y = event.y * HEIGHT
 				
 				if up.collidepoint(x, y):
-					move_tiles("up", tiles)
+					score = move_tiles("up", tiles, score)
 				elif down.collidepoint(x, y):
-					move_tiles("down", tiles)
+					score = move_tiles("down", tiles, score)
 				elif 0 <= x <= WIDTH // 4 and HEIGHT // 4 <= y <= HEIGHT // 4 * 3:
-					move_tiles("left", tiles)
+					score = move_tiles("left", tiles, score)
 				elif right.collidepoint(x, y):
-					move_tiles("right", tiles)
+					score = move_tiles("right", tiles, score)
 				
 			elif event.type == pygame.KEYDOWN:	
 				if event.key in [pygame.K_w, pygame.K_UP]:
-					move_tiles("up", tiles)
+					score = move_tiles("up", tiles)
 				elif event.key in [pygame.K_s, pygame.K_DOWN]:
-					move_tiles("down", tiles)
+					score = move_tiles("down", tiles)
 				elif event.key in [pygame.K_d, pygame.K_RIGHT]:
-					move_tiles("right", tiles)
+					score = move_tiles("right", tiles)
 				elif event.key in [pygame.K_a, pygame.K_LEFT]:
-					move_tiles("left", tiles)
+					score = move_tiles("left", tiles)
 					
-		draw(tiles)
+		draw(tiles, score)
+		
+		if check_loss(tiles):
+			return score, False
+		if any(tile.number == 2048 for tile in tiles.values()):
+			return score, True
 		pygame.time.Clock().tick(FPS)
 
+def end(win):
+	if win:
+		text = pygame.font.Font(None, 120).render("You won!", 1, (119, 110, 101))
+	else:
+		text = pygame.font.Font(None, 120).render("You lost...", 1, (119, 110, 101))
+		
+	while True:
+		WIN.blit(text, text.get_rect(center = (WIDTH // 2, HEIGHT // 2)))
+		for event in pygame.event.get():
+			if event.type == pygame.QUIT:
+				pygame.quit()
+				sys.exit()
+			elif event.type in [pygame.FINGERDOWN, pygame.KEYDOWN]:
+				return
+			
+		pygame.display.update()
+		pygame.time.Clock().tick(FPS)
 
 def main():
 	while True:
-		score = game()
-		end(score)
+		win = game()
+		end(win)
 
 if __name__ == '__main__':
 	main()
