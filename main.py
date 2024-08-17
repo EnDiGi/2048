@@ -261,10 +261,10 @@ def game():
 					
 		draw(tiles, score)
 		
-		if check_loss(tiles):
-			return score, False
+		if not check_loss(tiles):
+			return False
 		if any(tile.number == 2048 for tile in tiles.values()):
-			return score, True
+			return True
 		pygame.time.Clock().tick(FPS)
 
 def end(win):
